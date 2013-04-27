@@ -23,6 +23,11 @@
 #define _ATOM_ISP_H
 
 #include <linux/types.h>
+#include <linux/version.h>
+
+#define ATOMISP_CSS_VERSION_15	KERNEL_VERSION(1, 5, 0)
+#define ATOMISP_CSS_VERSION_17	KERNEL_VERSION(1, 7, 0)
+#define ATOMISP_CSS_VERSION_20	KERNEL_VERSION(2, 0, 0)
 
 /*ISP binary running mode*/
 #define CI_MODE_PREVIEW		0x8000
@@ -137,6 +142,20 @@ struct atomisp_3a_config {
 	int af_fir2_coef[7];	/* [factor] AF FIR coefficients of fir2 */
 };
 
+#ifdef ATOMISP_CSS2
+struct atomisp_grid_info {
+	uint32_t enable;
+	uint32_t use_dmem;
+	uint32_t has_histogram;
+	uint32_t s3a_width;
+	uint32_t s3a_height;
+	uint32_t aligned_width;
+	uint32_t aligned_height;
+	uint32_t s3a_bqs_per_grid_cell;
+	uint32_t deci_factor_log2;
+	uint32_t elem_bit_depth;
+};
+#else
 /* structure that describes the 3A and DIS grids shared with 3A lib*/
 struct atomisp_grid_info {
 	/* ISP input size that is visible for user */
@@ -155,7 +174,7 @@ struct atomisp_grid_info {
 	unsigned int dis_hor_coef_num;
 	unsigned int dis_ver_coef_num;
 };
-
+#endif
 struct atomisp_dis_vector {
 	int x;
 	int y;
@@ -173,11 +192,25 @@ struct atomisp_dis_statistics {
 	int __user *horizontal_projections;
 };
 
+struct atomisp_3a_rgby_output {
+	uint32_t r;
+	uint32_t g;
+	uint32_t b;
+	uint32_t y;
+};
+
+#ifdef ATOMISP_CSS2
+struct atomisp_3a_statistics {
+	struct atomisp_grid_info  grid_info;
+	struct atomisp_3a_output __user *data;
+	struct atomisp_3a_rgby_output __user *rgby_data;
+};
+#else
 struct atomisp_3a_statistics {
 	struct atomisp_grid_info  grid_info;
 	struct atomisp_3a_output __user *data;
 };
-
+#endif
 /**
  * struct atomisp_cont_capture_conf - continuous capture parameters
  * @num_captures: number of still images to capture
@@ -259,6 +292,50 @@ struct atomisp_parm {
 	struct atomisp_tnr_config tnr_config;
 };
 
+#ifdef ATOMISP_CSS2
+struct atomisp_parameters {
+	struct atomisp_wb_config   *wb_config;  /* White Balance config */
+	struct atomisp_cc_config   *cc_config;  /* Color Correction config */
+	struct atomisp_tnr_config  *tnr_config; /* Temporal Noise Reduction */
+	struct atomisp_ecd_config  *ecd_config; /* Eigen Color Demosaicing */
+	struct atomisp_ynr_config  *ynr_config; /* Y(Luma) Noise Reduction */
+	struct atomisp_fc_config   *fc_config;  /* Fringe Control */
+	struct atomisp_cnr_config  *cnr_config; /* Chroma Noise Reduction */
+	struct atomisp_macc_config *macc_config;  /* MACC */
+	struct atomisp_ctc_config  *ctc_config; /* Chroma Tone Control */
+	struct atomisp_aa_config   *aa_config;  /* Anti-Aliasing */
+	struct atomisp_ce_config   *ce_config;
+	struct atomisp_dvs_6axis_config *dvs_6axis_config;
+	struct atomisp_ob_config   *ob_config;  /* Objective Black config */
+	struct atomisp_dp_config   *dp_config;  /* Dead Pixel config */
+	struct atomisp_nr_config   *nr_config;  /* Noise Reduction config */
+	struct atomisp_ee_config   *ee_config;  /* Edge Enhancement config */
+	struct atomisp_de_config   *de_config;  /* Demosaic config */
+	struct atomisp_gc_config   *gc_config;  /* Gamma Correction config */
+	struct atomisp_anr_config  *anr_config; /* Advanced Noise Reduction */
+	struct atomisp_3a_config   *a3a_config; /* 3A Statistics config */
+	struct atomisp_xnr_config  *xnr_config; /* eXtra Noise Reduction */
+	struct atomisp_dz_config   *dz_config;  /* Digital Zoom */
+	struct atomisp_cc_config *yuv2rgb_cc_config; /* Color
+							Correction config */
+	struct atomisp_cc_config *rgb2yuv_cc_config; /* Color
+							Correction config */
+	struct atomisp_macc_table  *macc_table;
+	struct atomisp_gamma_table *gamma_table;
+	struct atomisp_ctc_table   *ctc_table;
+	struct atomisp_xnr_table   *xnr_table;
+	struct atomisp_rgb_gamma_table *r_gamma_table;
+	struct atomisp_rgb_gamma_table *g_gamma_table;
+	struct atomisp_rgb_gamma_table *b_gamma_table;
+	struct atomisp_vector      *motion_vector; /* For 2-axis DVS */
+	struct atomisp_shading_table *shading_table;
+	struct atomisp_morph_table   *morph_table;
+	struct atomisp_dvs_coefficients *dvs_coefs; /* DVS 1.0 coefficients */
+	struct atomisp_dvs2_coefficients *dvs2_coefs; /* DVS 2.0 coefficients */
+	struct atomisp_capture_config   *capture_config;
+	struct atomisp_anr_thres   *anr_thres;
+};
+#else
 struct atomisp_parameters {
 	struct atomisp_wb_config *wb_config;
 	struct atomisp_cc_config *cc_config;
@@ -278,7 +355,7 @@ struct atomisp_parameters {
 	struct atomisp_gc_config *gc_config;
 	struct atomisp_3a_config *a3a_config;
 };
-
+#endif
 #define ATOMISP_GAMMA_TABLE_SIZE        1024
 struct atomisp_gamma_table {
 	unsigned short data[ATOMISP_GAMMA_TABLE_SIZE];
@@ -844,6 +921,21 @@ struct v4l2_private_int_data {
 #define V4L2_CID_2A_STATUS                 (V4L2_CID_CAMERA_LASTP1 + 18)
 #define V4L2_2A_STATUS_AE_READY            (1 << 0)
 #define V4L2_2A_STATUS_AWB_READY           (1 << 1)
+
+#define V4L2_CID_FMT_AUTO			(V4L2_CID_CAMERA_LASTP1 + 19)
+
+#define V4L2_CID_RUN_MODE			(V4L2_CID_CAMERA_LASTP1 + 20)
+#define ATOMISP_RUN_MODE_VIDEO			1
+#define ATOMISP_RUN_MODE_STILL_CAPTURE		2
+#define ATOMISP_RUN_MODE_CONTINUOUS_CAPTURE	3
+#define ATOMISP_RUN_MODE_PREVIEW		4
+
+#define V4L2_CID_ENABLE_VFPP			(V4L2_CID_CAMERA_LASTP1 + 21)
+#define V4L2_CID_ATOMISP_CONTINUOUS_MODE	(V4L2_CID_CAMERA_LASTP1 + 22)
+#define V4L2_CID_ATOMISP_CONTINUOUS_RAW_BUFFER_SIZE \
+						(V4L2_CID_CAMERA_LASTP1 + 23)
+#define V4L2_CID_ATOMISP_CONTINUOUS_VIEWFINDER \
+						(V4L2_CID_CAMERA_LASTP1 + 24)
 
 #define V4L2_BUF_FLAG_BUFFER_INVALID       0x0400
 #define V4L2_BUF_FLAG_BUFFER_VALID         0x0800
