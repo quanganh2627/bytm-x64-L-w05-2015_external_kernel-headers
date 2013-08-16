@@ -25,9 +25,21 @@
 #include <linux/types.h>
 #include <linux/version.h>
 
-#define ATOMISP_CSS_VERSION_15	KERNEL_VERSION(1, 5, 0)
+/* struct media_device_info.driver_version */
+#define ATOMISP_CSS_VERSION_MASK	0x00ffffff
+#define ATOMISP_CSS_VERSION_15		KERNEL_VERSION(1, 5, 0)
 #define ATOMISP_CSS_VERSION_17	KERNEL_VERSION(1, 7, 0)
-#define ATOMISP_CSS_VERSION_20	KERNEL_VERSION(2, 0, 0)
+#define ATOMISP_CSS_VERSION_20		KERNEL_VERSION(2, 0, 0)
+
+/* struct media_device_info.hw_revision */
+#define ATOMISP_HW_REVISION_MASK	0x0000ff00
+#define ATOMISP_HW_REVISION_SHIFT	8
+#define ATOMISP_HW_REVISION_ISP2300	0x00
+#define ATOMISP_HW_REVISION_ISP2400	0x10
+
+#define ATOMISP_HW_STEPPING_MASK	0x000000ff
+#define ATOMISP_HW_STEPPING_A0		0x00
+#define ATOMISP_HW_STEPPING_B0		0x10
 
 /*ISP binary running mode*/
 #define CI_MODE_PREVIEW		0x8000
@@ -256,8 +268,8 @@ struct atomisp_de_config {
 
 /* Chroma enhancement */
 struct atomisp_ce_config {
-	unsigned int uv_level_min;
-	unsigned int uv_level_max;
+	unsigned char uv_level_min;
+	unsigned char uv_level_max;
 };
 
 /* Defect pixel correction configuration */
@@ -304,6 +316,7 @@ struct atomisp_parameters {
 	struct atomisp_macc_config *macc_config;  /* MACC */
 	struct atomisp_ctc_config  *ctc_config; /* Chroma Tone Control */
 	struct atomisp_aa_config   *aa_config;  /* Anti-Aliasing */
+	struct atomisp_aa_config   *baa_config;  /* Anti-Aliasing */
 	struct atomisp_ce_config   *ce_config;
 	struct atomisp_dvs_6axis_config *dvs_6axis_config;
 	struct atomisp_ob_config   *ob_config;  /* Objective Black config */
@@ -376,6 +389,19 @@ struct atomisp_morph_table {
 #define ATOMISP_NUM_SC_COLORS	4
 #define ATOMISP_SC_FLAG_QUERY	(1 << 0)
 
+#ifdef ATOMISP_CSS2
+struct atomisp_shading_table {
+	__u32 enable;
+
+	__u32 sensor_width;
+	__u32 sensor_height;
+	__u32 width;
+	__u32 height;
+	__u32 fraction_bits;
+
+	__u16 *data[ATOMISP_NUM_SC_COLORS];
+};
+#else /* ATOMISP_CSS2 */
 struct atomisp_shading_table {
 	/*
 	 * If flag ATOMISP_SC_FLAG_QUERY is set, IOCTL will only query current
@@ -401,6 +427,7 @@ struct atomisp_shading_table {
 	/* one table for each color (use sh_css_sc_color to index) */
 	__u16 __user *data[ATOMISP_NUM_SC_COLORS];
 };
+#endif /* CONFIG_VIDEO_ATOMISP_CSS20 */
 
 struct atomisp_makernote_info {
 	/* bits 31-16: numerator, bits 15-0: denominator */
@@ -937,10 +964,17 @@ struct v4l2_private_int_data {
 #define V4L2_CID_ATOMISP_CONTINUOUS_VIEWFINDER \
 						(V4L2_CID_CAMERA_LASTP1 + 24)
 
+#define V4L2_CID_VFPP				(V4L2_CID_CAMERA_LASTP1 + 25)
+#define ATOMISP_VFPP_ENABLE			0
+#define ATOMISP_VFPP_DISABLE_SCALER		1
+#define ATOMISP_VFPP_DISABLE_LOWLAT		2
+
 #define V4L2_BUF_FLAG_BUFFER_INVALID       0x0400
 #define V4L2_BUF_FLAG_BUFFER_VALID         0x0800
 
 #define V4L2_BUF_TYPE_VIDEO_CAPTURE_ION  (V4L2_BUF_TYPE_PRIVATE + 1024)
+
+#define V4L2_EVENT_ATOMISP_3A_STATS_READY   (V4L2_EVENT_PRIVATE_START + 1)
 
 /* Nonstandard color effects for V4L2_CID_COLORFX */
 enum {
