@@ -37,19 +37,22 @@ struct usb_functionfs_descs_head {
 	__le32 length;
 	__le32 fs_count;
 	__le32 hs_count;
+	__le32 ss_count;
 } __attribute__((packed));
 
 /*
  * Descriptors format:
  *
- * | off | name      | type         | description                          |
- * |-----+-----------+--------------+--------------------------------------|
- * |   0 | magic     | LE32         | FUNCTIONFS_{FS,HS}_DESCRIPTORS_MAGIC |
- * |   4 | length    | LE32         | length of the whole data chunk       |
- * |   8 | fs_count  | LE32         | number of full-speed descriptors     |
- * |  12 | hs_count  | LE32         | number of high-speed descriptors     |
- * |  16 | fs_descrs | Descriptor[] | list of full-speed descriptors       |
- * |     | hs_descrs | Descriptor[] | list of high-speed descriptors       |
+ * | off | name      | type         | description                             |
+ * |-----+-----------+--------------+-----------------------------------------|
+ * |   0 | magic     | LE32         | FUNCTIONFS_{FS,HS,SS}_DESCRIPTORS_MAGIC |
+ * |   4 | length    | LE32         | length of the whole data chunk          |
+ * |   8 | fs_count  | LE32         | number of full-speed descriptors        |
+ * |  12 | hs_count  | LE32         | number of high-speed descriptors        |
+ * |  16 | ss_count  | LE32         | number of super-speed descriptors       |
+ * |  20 | fs_descrs | Descriptor[] | list of full-speed descriptors          |
+ * |     | hs_descrs | Descriptor[] | list of high-speed descriptors          |
+ * |     | ss_descrs | Descriptor[] | list of super-speed descriptors         |
  *
  * descs are just valid USB descriptors and have the following format:
  *
