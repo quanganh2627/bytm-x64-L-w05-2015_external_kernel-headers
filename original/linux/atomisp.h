@@ -28,7 +28,6 @@
 /* struct media_device_info.driver_version */
 #define ATOMISP_CSS_VERSION_MASK	0x00ffffff
 #define ATOMISP_CSS_VERSION_15		KERNEL_VERSION(1, 5, 0)
-#define ATOMISP_CSS_VERSION_17		KERNEL_VERSION(1, 7, 0)
 #define ATOMISP_CSS_VERSION_20		KERNEL_VERSION(2, 0, 0)
 
 /* struct media_device_info.hw_revision */
@@ -183,7 +182,7 @@ struct atomisp_grid_info {
 	uint32_t deci_factor_log2;
 	uint32_t elem_bit_depth;
 };
-#else
+#else /* ATOMISP_CSS2 */
 /* structure that describes the 3A and DIS grids shared with 3A lib*/
 struct atomisp_grid_info {
 	/* ISP input size that is visible for user */
@@ -202,7 +201,7 @@ struct atomisp_grid_info {
 	unsigned int dis_hor_coef_num;
 	unsigned int dis_ver_coef_num;
 };
-#endif
+#endif /* ATOMISP_CSS2 */
 struct atomisp_dis_vector {
 	int x;
 	int y;
@@ -220,8 +219,9 @@ struct atomisp_dvs2_coef_types {
 	short __user *even_imag;/**< imaginary part of the even coefficients*/
 };
 
-/** DVS 2.0 Statistic types. This structure contains 4 pointers to
- *  arrays that contain the statistics for each type.
+/*
+ * DVS 2.0 Statistic types. This structure contains 4 pointers to
+ * arrays that contain the statistics for each type.
  */
 struct atomisp_dvs2_stat_types {
 	int __user *odd_real; /**< real part of the odd statistics*/
@@ -229,18 +229,18 @@ struct atomisp_dvs2_stat_types {
 	int __user *even_real;/**< real part of the even statistics*/
 	int __user *even_imag;/**< imaginary part of the even statistics*/
 };
-#endif
+#endif /* ATOMISP_CSS2 */
 
 struct atomisp_dis_coefficients {
 #ifdef ATOMISP_CSS2
 	struct atomisp_dvs_grid_info grid_info;
 	struct atomisp_dvs2_coef_types hor_coefs;
 	struct atomisp_dvs2_coef_types ver_coefs;
-#else
+#else /* ATOMISP_CSS2 */
 	struct atomisp_grid_info grid_info;
 	short __user *vertical_coefficients;
 	short __user *horizontal_coefficients;
-#endif
+#endif /* ATOMISP_CSS2 */
 };
 
 struct atomisp_dis_statistics {
@@ -248,7 +248,7 @@ struct atomisp_dis_statistics {
 	struct atomisp_dvs_grid_info grid_info;
 	struct atomisp_dvs2_stat_types hor_prod;
 	struct atomisp_dvs2_stat_types ver_prod;
-#else
+#else /* ATOMISP_CSS2 */
 	struct atomisp_grid_info grid_info;
 	int __user *vertical_projections;
 	int __user *horizontal_projections;
@@ -268,12 +268,12 @@ struct atomisp_3a_statistics {
 	struct atomisp_3a_output __user *data;
 	struct atomisp_3a_rgby_output __user *rgby_data;
 };
-#else
+#else /* ATOMISP_CSS2 */
 struct atomisp_3a_statistics {
 	struct atomisp_grid_info  grid_info;
 	struct atomisp_3a_output __user *data;
 };
-#endif
+#endif /* ATOMISP_CSS2 */
 /**
  * struct atomisp_cont_capture_conf - continuous capture parameters
  * @num_captures: number of still images to capture
@@ -421,7 +421,7 @@ struct atomisp_parameters {
 	struct atomisp_capture_config   *capture_config;
 	struct atomisp_anr_thres   *anr_thres;
 };
-#else
+#else /* ATOMISP_CSS2 */
 struct atomisp_parameters {
 	struct atomisp_wb_config *wb_config;
 	struct atomisp_cc_config *cc_config;
@@ -441,7 +441,7 @@ struct atomisp_parameters {
 	struct atomisp_gc_config *gc_config;
 	struct atomisp_3a_config *a3a_config;
 };
-#endif
+#endif /* ATOMISP_CSS2 */
 #define ATOMISP_GAMMA_TABLE_SIZE        1024
 struct atomisp_gamma_table {
 	unsigned short data[ATOMISP_GAMMA_TABLE_SIZE];
@@ -500,7 +500,7 @@ struct atomisp_shading_table {
 	/* one table for each color (use sh_css_sc_color to index) */
 	__u16 __user *data[ATOMISP_NUM_SC_COLORS];
 };
-#endif /* CONFIG_VIDEO_ATOMISP_CSS20 */
+#endif /* ATOMISP_CSS2 */
 
 struct atomisp_makernote_info {
 	/* bits 31-16: numerator, bits 15-0: denominator */
@@ -674,6 +674,19 @@ enum atomisp_acc_arg_type {
 	ATOMISP_ACC_ARG_FRAME	     /* Frame argument */
 };
 
+#if defined(CONFIG_ISP2400) || defined(CONFIG_ISP2400B0)
+/** ISP memories, isp2400 */
+enum atomisp_acc_memory {
+	ATOMISP_ACC_MEMORY_PMEM0 = 0,
+	ATOMISP_ACC_MEMORY_DMEM0,
+	ATOMISP_ACC_MEMORY_VMEM0,
+	ATOMISP_ACC_MEMORY_VAMEM0,
+	ATOMISP_ACC_MEMORY_VAMEM1,
+	ATOMISP_ACC_MEMORY_VAMEM2,
+	ATOMISP_ACC_MEMORY_HMEM0,
+	ATOMISP_ACC_NR_MEMORY
+};
+#else /* defined(CONFIG_ISP2400) || defined(CONFIG_ISP2400B0) */
 /** ISP memories, isp2300 */
 enum atomisp_acc_memory {
 	ATOMISP_ACC_MEMORY_PMEM = 0,
@@ -683,6 +696,7 @@ enum atomisp_acc_memory {
 	ATOMISP_ACC_MEMORY_VAMEM2,
 	ATOMISP_ACC_NR_MEMORY		/* Must be last */
 };
+#endif /* defined(CONFIG_ISP2400) || defined(CONFIG_ISP2400B0) */
 
 struct atomisp_sp_arg {
 	enum atomisp_acc_arg_type type;	/* Type  of SP argument */
@@ -808,8 +822,14 @@ struct v4l2_private_int_data {
 	_IOWR('v', BASE_VIDIOC_PRIVATE + 14, struct atomisp_dis_statistics)
 #define ATOMISP_IOC_S_DIS_COEFS \
 	_IOW('v', BASE_VIDIOC_PRIVATE + 15, struct atomisp_dis_coefficients)
+
+#ifdef ATOMISP_CSS2
+#define ATOMISP_IOC_S_DIS_VECTOR \
+	_IOWR('v', BASE_VIDIOC_PRIVATE + 16, struct atomisp_dvs_6axis_config)
+#else
 #define ATOMISP_IOC_S_DIS_VECTOR \
 	_IOW('v', BASE_VIDIOC_PRIVATE + 16, struct atomisp_dis_vector)
+#endif
 
 #define ATOMISP_IOC_G_3A_STAT \
 	_IOW('v', BASE_VIDIOC_PRIVATE + 17, struct atomisp_3a_statistics)
@@ -965,9 +985,6 @@ struct v4l2_private_int_data {
 
 #define ATOMISP_IOC_ACC_LOAD_TO_PIPE \
 	_IOWR('v', BASE_VIDIOC_PRIVATE + 63, struct atomisp_acc_fw_load_to_pipe)
-
-#define ATOMISP_IOC_S_6AXIS_CONFIG \
-	_IOWR('v', BASE_VIDIOC_PRIVATE + 64, struct atomisp_dvs_6axis_config)
 
 /*  ISP Private control IDs */
 #define V4L2_CID_ATOMISP_BAD_PIXEL_DETECTION \
