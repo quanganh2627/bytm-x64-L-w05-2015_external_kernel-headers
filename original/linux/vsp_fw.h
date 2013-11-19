@@ -66,12 +66,9 @@ enum VssFrcConversionRate {
 struct VssProcPipelineParameterBuffer {
 	unsigned int      num_filters;
 	enum VssProcFilterType filter_pipeline[VssProcPipelineMaxNumFilters];
-	/* VssRectangle      output_region; */
-	/* unsigned int      output_background_color; */
-	/* VssColorPrimaries output_color_primaries; */
-
+	unsigned int intermediate_buffer_base;
+	unsigned int intermediate_buffer_size;
 	/* to make multiple of 32 bytes*/
-	int                _pad[2];
 };
 
 struct VssProcSharpenParameterBuffer {
