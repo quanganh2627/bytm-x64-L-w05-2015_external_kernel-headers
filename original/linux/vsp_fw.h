@@ -570,6 +570,11 @@ struct VssVp8encSequenceParameterBuffer {
 	uint32_t cyclic_intra_refresh;
 	uint32_t concatenate_partitions;
 	uint32_t recon_buffer_mode;
+	uint32_t ts_number_layers;
+	uint32_t ts_target_bitrate[3];
+	uint32_t ts_rate_decimator[3];
+	uint32_t ts_periodicity;
+	uint32_t ts_layer_id[32];
 	struct VssProcPictureVP8 ref_frame_buffers[4];
 };
 
