@@ -156,7 +156,8 @@ enum VssProcCommandType {
 	VssProcPictureCommand =                   0xFFF9,
 	VspFencePictureParamCommand =             0xEBEC,
 	VspSetContextCommand =                    0xEBED,
-	Vss_Sys_STATE_BUF_COMMAND
+	Vss_Sys_STATE_BUF_COMMAND =		  0xEBEE,
+	VspFenceComposeCommand =		  0xEBEF
 };
 
 #define VSP_CMD_QUEUE_SIZE (64)
@@ -219,7 +220,10 @@ enum VssStatus {
 	VssInvalidDdrAddress          = 0x8005,
 	VssInvalidSequenceParameters_VP8 = 0x1,
 	VssInvalidPictureParameters_VP8  = 0x2,
-	VssInitFailure_VP8               = 0x5
+	VssContextMustBeDestroyed_VP8    = 0x3,
+	VssInitFailure_VP8               = 0x5,
+	VssCorruptFrame                  = 0x6,
+	VssCorruptFramecontinue_VP8      = 0x7
 };
 
 enum FrcResponseType {
@@ -297,7 +301,7 @@ struct vsp_secure_boot_header {
 	unsigned int boot_start_reg;
 };
 
-#define VSP_MULTI_APP_MAGIC_NR 0xb10b0004
+#define VSP_MULTI_APP_MAGIC_NR 0xb10b0005
 /*
  * Note: application index/id 0 is reserved.
  * So the maximum number of applications is one less than listed here.
@@ -640,6 +644,83 @@ enum VssGenCommandType {
 	 * de-initialize and destroy. The size-field should always be set to 0.
 	 */
 	VssGenDestroyContext          = 0xab02
+};
+
+/****************************
+ * WiDi Compose data structures
+ ****************************/
+enum VssWiDi_ComposeCommandType {
+	VssWiDi_ComposeSetSequenceParametersCommand = 200,
+	VssWiDi_ComposeFrameCommand,
+	VssWiDi_ComposeEndOfSequenceCommand
+};
+
+enum VssWiDi_ComposeResponseType {
+	VssWiDi_ComposeSetSequenceParametersResponse = 250,
+	VssWiDi_ComposeFrameResponse,
+};
+
+enum VssWiDi_ColorFormat {
+	MonoChrome = 0,
+	YUV_4_2_0,
+	YUV_4_2_0_NV12,
+	YUV_4_2_2,
+	YUV_4_4_4
+};
+/**
+ * WiDi Compose sequence parameter data structure.
+ */
+struct VssWiDi_ComposeSequenceParameterBuffer {
+	unsigned int R_Buffer;
+	unsigned int G_Buffer;
+	unsigned int B_Buffer;
+	unsigned int RGBA_Buffer;
+	unsigned int Y_Buffer;
+	unsigned int UV_Buffer;
+	unsigned int U_Buffer;
+	unsigned int V_Buffer;
+	unsigned int A_Buffer;
+	int ActualWidth;
+	int ActualHeight;
+	int ProcessedWidth;
+	int ProcessedHeight;
+	int TotalMBCount;
+	int Stride;
+	/*Video related*/
+	int Video_IN_xsize;
+	int Video_IN_ysize;
+	int Video_IN_stride;
+	int Video_IN_yuv_format; 
+
+	unsigned int Video_IN_Y_Buffer;
+	unsigned int Video_IN_UV_Buffer;
+        unsigned int Video_IN_U_Buffer;
+	unsigned int Video_IN_V_Buffer;
+	int Video_OUT_xsize;
+	int Video_OUT_ysize;
+	int Video_OUT_stride;
+	int Video_OUT_yuv_format; 
+
+	unsigned int Video_OUT_Y_Buffer;
+	unsigned int Video_OUT_UV_Buffer;
+	unsigned int Video_OUT_V_Buffer;
+	/*Blending related params*/
+	int Is_Blending_Enabled;
+	int ROI_width;
+	int ROI_height;
+	int ROI_x1;
+	int ROI_y1;
+	int ROI_x2;
+	int ROI_y2;
+	int alpha1;
+	int alpha2;
+	int Is_video_the_back_ground;
+	int Is_source_1_image_available;
+	int Is_source_2_image_available;
+	int Is_alpha_channel_available;
+	int Video_TotalMBCount;
+	int CSC_FormatSelect; /* 0: YUV420NV12; 1: YUV444; */
+	int CSC_InputFormatSelect; // 0: RGB Planar; 1: RGBA Interleaved
 };
 
 #pragma pack()
