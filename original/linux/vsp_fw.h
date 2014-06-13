@@ -335,6 +335,10 @@ struct vsp_multi_app_blob_data {
 	/** default context-buffer size of apps in this blob (each app also has it's
 	 * context-size in it's header. */
 	unsigned int apps_default_context_buffer_size;
+	/**
+	* Address of genboot-helper-program in blob (relative to start of this header)
+	*/
+	unsigned int genboot_helper_prog_offset;
 	/*
 	 * * This table contains a zero (offset of zero) for unused entries
 	 * * Offsets here are relative to the start-address of this header.
@@ -704,6 +708,12 @@ struct VssWiDi_ComposeSequenceParameterBuffer {
 	unsigned int Video_OUT_Y_Buffer;
 	unsigned int Video_OUT_UV_Buffer;
 	unsigned int Video_OUT_V_Buffer;
+
+	unsigned int scaled_width;
+	unsigned int scaled_height;
+	unsigned int scalefactor_dx;
+	unsigned int scalefactor_dy;
+
 	/*Blending related params*/
 	int Is_Blending_Enabled;
 	int ROI_width;
