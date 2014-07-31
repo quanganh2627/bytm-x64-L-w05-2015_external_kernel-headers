@@ -1,9 +1,9 @@
 /*
  ****************************************************************
  *
- *  Copyright (C) 2014, Intel Mobile Communications GmbH.
+ *  Copyright (C) 2011-2014 Intel Mobile Communications GmbH
  *
- *  This program is free software: you can redistribute it and/or modify
+ *    This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License Version 2
  *  as published by the Free Software Foundation.
  *
@@ -14,6 +14,7 @@
  *  You should have received a copy of the GNU General Public License Version 2
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
+ *
  ****************************************************************
  */
 
@@ -22,29 +23,8 @@
 #include <linux/ioctl.h>
 
 
-/**
- * V 0.3: Modifications to support Android libraries
- *        libgralloc and libopencore. Added IOCTL update and convert.
- *        modified ioctl header, internal driver pixfmt definition
- *
- * V 0.4: Changing videobase and videosize for every operation
- *
- * V 0.5: Removing ARCH_XGOLDxxx references
- *
- * V 0.6: Add suspend/resume
- *
- * V 0.7: Optimize fifo management
- *
- * V 0.8: Cleaner transparency management
- *
- * V 1.0: Cleaner overlay management
- *
- * V 1.1: XG631 enhancements support
- */
-
-#define DCCDRV_VERSION_STR "1.1"
-#define DCCDRV_VERSION_INT (11)
-
+#define DCCDRV_VERSION_STR "1.5"
+#define DCCDRV_VERSION_INT (15)
 
 #define	DCC_DRIVER_NAME	"dcc"
 #define	DCC_DEVICE_NAME	"/dev/"DCC_DRIVER_NAME
@@ -83,6 +63,24 @@ enum {
 	DCC_FMT_YUV422SP	= 16,
 	DCC_FMT_YUV420SP	= 17,
 };
+
+/* DCC update flags */
+#define	DCC_UPDATE_MODE_GET(_f_)	(_f_ & DCC_UPDATE_MODE_MASK)
+#define	DCC_UPDATE_MODE_SET(_f_, _m_) \
+	(_f_ = (_f_ & !DCC_UPDATE_MODE_MASK) | _m_)
+#define	DCC_UPDATE_MODE_BITS		(3)
+#define	DCC_UPDATE_MODE_MASK		((1<<DCC_UPDATE_MODE_BITS)-1)
+enum {
+	DCC_UPDATE_ONESHOT_SYNC = 0,
+	DCC_UPDATE_ONESHOT_ASYNC,
+	DCC_UPDATE_CONTINOUS,
+};
+
+#define DCC_UPDATE_NOBG_MASK		(1<<DCC_UPDATE_MODE_BITS)
+#define DCC_UPDATE_NOBG_GET(_f_)	((_f_>>DCC_UPDATE_MODE_BITS)&0x1)
+#define DCC_UPDATE_NOBG_SET(_f_, _v_)	\
+	(_f_ = (_f_ & !DCC_UPDATE_NOBG_MASK) | (_v_<<DCC_UPDATE_MODE_BITS))
+
 
 #define DCC_FMT_VIDEO_SPRITE	0xFF /* specific format for sprites */
 
@@ -135,7 +133,12 @@ static inline const char *dcc_format_name(int fmt)
 	}
 }
 
-
+struct dcc_bounds_t {
+	int x;
+	int y;
+	int w;
+	int h;
+};
 
 struct dcc_display_cfg_t {
 	int width;
@@ -268,9 +271,10 @@ struct dcc_rect_t {
 	unsigned int h;
 	unsigned int fmt;
 	unsigned int color;	/* optional */
+	unsigned int flags;	/* optional */
 };
 
-#define DCC_INIT_RECT(_r_, _p_, _fbw_, _x_, _y_, _w_, _h_, _f_, _c_) \
+#define DCC_INIT_RECT(_r_, _p_, _fbw_, _x_, _y_, _w_, _h_, _f_, _c_, _g_) \
 		_r_.phys = _p_; \
 		_r_.fbwidth = _fbw_; \
 		_r_.x    = _x_; \
@@ -278,56 +282,9 @@ struct dcc_rect_t {
 		_r_.w    = _w_; \
 		_r_.h    = _h_; \
 		_r_.fmt  = _f_; \
-		_r_.color = _c_;
+		_r_.color = _c_; \
+		_r_.flags = _g_;
 
-#define DCC_SPRITE_NBR	4
-
-struct dcc_sprite_t {
-	unsigned int en;	/* 0:off, 1:on */
-	unsigned int phys;
-	unsigned int id;	/* sprite number [0,3] */
-	unsigned int x;		/* top left x */
-	unsigned int y;		/* top left y */
-	unsigned int w;
-	unsigned int h;
-	unsigned int alpha;	/* global alpha value */
-	unsigned int global;	/* use global alpha value
-				   from DIF_SPRITE_SIZEx.ALPHA or update cmd */
-	unsigned int fmt;
-	unsigned int chromakey;	/* chromakey for overlay only */
-};
-
-#define DCC_SPRITE_DECLARE(_sp_) \
-	struct dcc_sprite_t _sp_;
-
-#define DCC_SPRITE_INIT(_sp_, _e_, _i_, _o_, \
-		_x_, _y_, _w_, _h_, _a_, _g_, _f_, _c_) \
-		_sp_.en     = _e_; \
-		_sp_.id     = _i_; \
-		_sp_.phys   = _o_; \
-		_sp_.x      = _x_; \
-		_sp_.y      = _y_; \
-		_sp_.w      = _w_; \
-		_sp_.h      = _h_; \
-		_sp_.alpha  = _a_; \
-		_sp_.global = _g_; \
-		_sp_.fmt    = _f_; \
-		_sp_.chromakey = _c_;
-
-#define DCC_SPRITE_OFF(_sp_) _sp_.en = 0
-
-struct dcc_overlay_t {
-	unsigned int phys;
-	unsigned int key;	/* chroma key for 16 bit */
-	unsigned int use_upd_alpha;	/* use alpha from update cmd */
-	unsigned int fmt;
-};
-
-#define DCC_INIT_OVERLAY(_o_, _p_, _k_, _a_, _fmt_) \
-		_o_.phys = _p_; \
-		_o_.key = _k_; \
-		_o_.fmt = _fmt_; \
-		_o_.use_upd_alpha = _a_;
 
 struct dcc_point_t {
 	unsigned int phys;	/* base adress */
@@ -344,9 +301,67 @@ struct dcc_point_t {
 		_p_.y    = _y_; \
 		_p_.color = _c_;
 
-struct dcc_switch_t {
-	unsigned int enable;
-	unsigned int value;
+
+struct dcc_layer_back {
+	unsigned int phys;	/* frame buffer base */
+	unsigned int stride;	/* frame buffer width */
+	struct dcc_bounds_t src;
+	unsigned int fmt;
+	unsigned int alpha;	/* optional */
+	int fence_acquire;
+	int fence_release;
+	int fd;
+};
+
+#define dcc_layer_back_conf(_r_, _p_, _s_, _x_, _y_, \
+			_w_, _h_, _f_, _a_, _c_, _g_) \
+		_r_.phys    = _p_; \
+		_r_.stride  = _s_; \
+		_r_.src.x   = _x_; \
+		_r_.src.y   = _y_; \
+		_r_.src.w   = _w_; \
+		_r_.src.h   = _h_; \
+		_r_.fmt     = _f_; \
+		_r_.alpha   = _a_;
+
+#define dcc_layer_back_disable(_b_) _b_.phys = 0
+
+struct dcc_layer_ovl {
+	unsigned int phys;
+	struct dcc_bounds_t src;
+	struct dcc_bounds_t dst;
+	unsigned int fmt;
+	unsigned int alpha;
+	int fence_acquire;
+	int fence_release;
+	int fd;
+
+	unsigned int global;	/* use global alpha value or update cmd */
+	unsigned int chromakey;	/* chromakey for overlay only */
+};
+
+#define dcc_layer_ovl_conf(_o_, _p_, \
+		_x_, _y_, _w_, _h_, _f_, _fd_, _a_, _g_, _c_) \
+		_o_.phys   = _p_; \
+		_o_.dst.x  = _x_; \
+		_o_.dst.y  = _y_; \
+		_o_.dst.w  = _w_; \
+		_o_.dst.h  = _h_; \
+		_o_.fmt    = _f_; \
+		_o_.fence_acquire = _fd_; \
+		_o_.alpha  = _a_; \
+		_o_.global = _g_; \
+		_o_.chromakey = _c_;
+
+#define dcc_layer_ovl_disable(_o_) _o_.phys = 0
+
+#define DCC_OVERLAY_NUM 4
+
+struct dcc_update_layers {
+	struct dcc_layer_back back;
+	struct dcc_layer_ovl ovls[DCC_OVERLAY_NUM];
+	int fence_retire;
+	unsigned int flags;
 };
 
 /* IO CONTROL DEFINES */
@@ -360,16 +375,14 @@ struct dcc_switch_t {
 #define DCC_IOW_BLIT			_IOWR('x', 4, struct dcc_rq_t)
 #define DCC_IOW_ROTATE			_IOWR('x', 5, struct dcc_rq_t)
 #define DCC_IOW_RESIZE			_IOWR('x', 6, struct dcc_rq_resize_t)
+#define DCC_IOW_COMPOSE			_IOWR('x', 7, struct dcc_update_layers)
 #define DCC_IOW_DRAWLINEREL		_IOWR('x', 13, struct dcc_rect_t)
 #define DCC_IOW_MIRROR			_IOWR('x', 14, struct dcc_rq_t)
 #define DCC_IOR_DISPLAY_INFO		_IOWR('x', 15, struct dcc_display_cfg_t)
 #define DCC_IOW_SCROLLMOVE		_IOWR('x', 16, struct dcc_rq_t)
-#define DCC_IOW_SPRITECONF		_IOWR('x', 18, struct dcc_sprite_t)
 #define DCC_IOW_SETPIXEL		_IOWR('x', 20, struct dcc_point_t)
 #define DCC_IOW_CONVERT			_IOWR('x', 21, struct dcc_rq_t)
 #define DCC_IOW_UPDATE			_IOWR('x', 22, struct dcc_rect_t)
-#define DCC_IOW_OVERLAYCONF		_IOWR('x', 23, struct dcc_overlay_t)
-#define DCC_IOW_UPDATE_OVERLAY		_IOWR('x', 27, struct dcc_rect_t)
 
 #define DCC_IOC_MAXNR (27)
 
